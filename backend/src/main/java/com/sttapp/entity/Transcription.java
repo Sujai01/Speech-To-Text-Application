@@ -1,46 +1,75 @@
 package com.sttapp.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
-/**
- * Entity representing a Speech-to-Text Transcription.
- * Maps to the "transcriptions" table in PostgreSQL.
- */
 @Entity
 @Table(name = "transcriptions")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Transcription {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Many-to-One relationship: Many transcriptions belong to one user.
-    // FetchType.LAZY ensures we only load the user data when explicitly requested, saving memory.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // Stores the path or URL where the uploaded audio file is saved
     @Column(name = "audio_file", nullable = false)
     private String audioFile;
 
-    // We use columnDefinition = "TEXT" because transcripts can be very long 
-    // and exceed standard VARCHAR(255) limits.
     @Column(columnDefinition = "TEXT", nullable = false)
     private String transcript;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    public Transcription() {}
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public User getUser() { return user; }
+    public void setUser(User user) { this.user = user; }
+    public String getAudioFile() { return audioFile; }
+    public void setAudioFile(String audioFile) { this.audioFile = audioFile; }
+    public String getTranscript() { return transcript; }
+    public void setTranscript(String transcript) { this.transcript = transcript; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public static TranscriptionBuilder builder() {
+        return new TranscriptionBuilder();
+    }
+
+    public static class TranscriptionBuilder {
+        private User user;
+        private String audioFile;
+        private String transcript;
+
+        public TranscriptionBuilder user(User user) {
+            this.user = user;
+            return this;
+        }
+
+        public TranscriptionBuilder audioFile(String audioFile) {
+            this.audioFile = audioFile;
+            return this;
+        }
+
+        public TranscriptionBuilder transcript(String transcript) {
+            this.transcript = transcript;
+            return this;
+        }
+
+        public Transcription build() {
+            Transcription t = new Transcription();
+            t.setUser(this.user);
+            t.setAudioFile(this.audioFile);
+            t.setTranscript(this.transcript);
+            return t;
+        }
+    }
 }

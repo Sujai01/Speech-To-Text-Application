@@ -3,7 +3,7 @@ package com.sttapp.service.impl;
 import com.sttapp.entity.User;
 import com.sttapp.repository.UserRepository;
 import com.sttapp.service.UserService;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.stereotype.Service;
 
 /**
@@ -11,10 +11,13 @@ import org.springframework.stereotype.Service;
  * Handles the actual business logic for User operations.
  */
 @Service
-@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
+
+    public UserServiceImpl(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     @Override
     public User getUserByEmail(String email) {

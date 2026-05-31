@@ -19,21 +19,10 @@
     <properties>
         <java.version>17</java.version>
         <jjwt.version>0.11.5</jjwt.version>
-        <google.cloud.version>33.0.0</google.cloud.version>
+        <google.cloud.version>26.32.0</google.cloud.version>
     </properties>
 
-    <!-- Google Cloud Dependency Management for specific version aligning -->
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>com.google.cloud</groupId>
-                <artifactId>libraries-bom</artifactId>
-                <version>${google.cloud.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
+
 
     <dependencies>
         <!-- Spring Boot Core Web & Validation -->
@@ -82,18 +71,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Google Cloud Speech-to-Text API -->
-        <dependency>
-            <groupId>com.google.cloud</groupId>
-            <artifactId>google-cloud-speech</artifactId>
-        </dependency>
 
-        <!-- Lombok to reduce boilerplate code -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
 
         <!-- Testing -->
         <dependency>
@@ -113,14 +91,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <configuration>
-                    <excludes>
-                        <exclude>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                        </exclude>
-                    </excludes>
-                </configuration>
             </plugin>
         </plugins>
     </build>

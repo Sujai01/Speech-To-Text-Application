@@ -8,7 +8,7 @@ import com.sttapp.entity.User;
 import com.sttapp.repository.UserRepository;
 import com.sttapp.security.JwtService;
 import com.sttapp.service.AuthService;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,15 +19,19 @@ import org.springframework.stereotype.Service;
  * Handles the business logic for User Authentication and Registration.
  */
 @Service
-@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
-    
-    // Injected Security Dependencies
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+
+    public AuthServiceImpl(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService, AuthenticationManager authenticationManager) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
+        this.authenticationManager = authenticationManager;
+    }
 
     @Override
     public AuthResponse register(RegisterRequest request) {

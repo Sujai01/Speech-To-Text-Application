@@ -1,15 +1,22 @@
 package com.sttapp.service.impl;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sttapp.dto.TranscriptionResponse;
 import com.sttapp.entity.Transcription;
 import com.sttapp.entity.User;
 import com.sttapp.repository.TranscriptionRepository;
 import com.sttapp.repository.UserRepository;
 import com.sttapp.service.SpeechService;
-import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -18,26 +25,69 @@ import java.util.stream.Collectors;
  * Handles the logic for converting audio to text and managing history.
  */
 @Service
-@RequiredArgsConstructor
 public class SpeechServiceImpl implements SpeechService {
+
+    @Value("${deepgram.api.key}")
+    private String deepgramApiKey;
 
     private final TranscriptionRepository transcriptionRepository;
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper;
+
+    public SpeechServiceImpl(TranscriptionRepository transcriptionRepository, UserRepository userRepository, ObjectMapper objectMapper) {
+        this.transcriptionRepository = transcriptionRepository;
+        this.userRepository = userRepository;
+        this.objectMapper = objectMapper;
+    }
 
     @Override
     public TranscriptionResponse processAudio(MultipartFile file, String userEmail) {
         User user = getUser(userEmail);
-
-        // 1. Extract file info (In production, you'd upload this to an S3 bucket or Google Cloud Storage first)
         String fileName = file.getOriginalFilename();
+        String generatedTranscript = "";
 
-        // 2. TODO: Call actual Google Cloud Speech-to-Text API
-        // Because GCP requires a JSON key file to work, we are mocking the text return for now.
-        // Once credentials are added to application.properties, the Cloud SDK code goes here.
-        String generatedTranscript = "This is a simulated transcript for the audio file: " + fileName 
-                + ". In a production environment with valid GCP credentials, this will be actual text.";
+        try {
+            // Determine Content-Type
+            String contentType = file.getContentType();
+            if (contentType == null || contentType.isEmpty()) {
+                contentType = "application/octet-stream";
+            }
 
-        // 3. Save the result to the PostgreSQL database
+            // 1. Build Deepgram API HTTP Request
+            HttpClient client = HttpClient.newHttpClient();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create("https://api.deepgram.com/v1/listen?smart_format=true&model=nova-2&language=en"))
+                    .header("Authorization", "Token " + deepgramApiKey)
+                    .header("Content-Type", contentType)
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(file.getBytes()))
+                    .build();
+
+            // 2. Execute Request
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                throw new RuntimeException("Deepgram API returned an error: " + response.body());
+            }
+
+            // 3. Parse JSON Response
+            JsonNode rootNode = objectMapper.readTree(response.body());
+            JsonNode channels = rootNode.path("results").path("channels");
+            
+            if (channels.isArray() && channels.size() > 0) {
+                JsonNode alternatives = channels.get(0).path("alternatives");
+                if (alternatives.isArray() && alternatives.size() > 0) {
+                    generatedTranscript = alternatives.get(0).path("transcript").asText();
+                }
+            }
+
+            if (generatedTranscript.isEmpty()) {
+                generatedTranscript = "[No speech detected]";
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to process audio with Deepgram STT: " + e.getMessage(), e);
+        }
+
+        // 4. Save the result to the PostgreSQL database
         Transcription transcription = Transcription.builder()
                 .user(user)
                 .audioFile(fileName)
@@ -53,7 +103,6 @@ public class SpeechServiceImpl implements SpeechService {
     public List<TranscriptionResponse> getUserTranscriptionHistory(String userEmail) {
         User user = getUser(userEmail);
         
-        // Fetch from DB, map Entity to DTO, and return as a List
         return transcriptionRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
                 .stream()
                 .map(this::mapToResponse)
@@ -72,14 +121,11 @@ public class SpeechServiceImpl implements SpeechService {
         transcriptionRepository.delete(transcription);
     }
 
-    // --- Private Helper Methods ---
-
     private User getUser(String email) {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    // Security Check: Ensures a user can only access their own records
     private Transcription getOwnedTranscription(Long id, String email) {
         Transcription transcription = transcriptionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Transcription not found"));
@@ -90,7 +136,6 @@ public class SpeechServiceImpl implements SpeechService {
         return transcription;
     }
 
-    // Cleanly converts our Database Entity into the Frontend DTO
     private TranscriptionResponse mapToResponse(Transcription t) {
         return TranscriptionResponse.builder()
                 .id(t.getId())

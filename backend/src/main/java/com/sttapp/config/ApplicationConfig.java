@@ -1,7 +1,7 @@
 package com.sttapp.config;
 
 import com.sttapp.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -18,10 +18,13 @@ import org.springframework.security.crypto.password.PasswordEncoder;
  * Defines core Beans needed by Spring Security for user authentication.
  */
 @Configuration
-@RequiredArgsConstructor
 public class ApplicationConfig {
 
     private final UserRepository userRepository;
+
+    public ApplicationConfig(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     /**
      * Instructs Spring Security how to find a user in our database.
